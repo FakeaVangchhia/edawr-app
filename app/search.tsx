@@ -19,7 +19,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ProductGrid } from '@/components/ProductGrid';
 import { usePromiseMinutes, useRecentSearches } from '@/hooks/useStoreData';
 import { slugify } from '@/lib/catalogue';
-import { rememberSearch } from '@/lib/recent-searches';
+import { clearRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { fetchCategories, fetchProducts } from '@/lib/store-api';
 import { GUTTER, colors } from '@/theme';
 import type { StoreCategory, StoreProduct } from '@/types';
@@ -57,7 +57,6 @@ export default function SearchScreen() {
     if (!query) return;
 
     const controller = new AbortController();
-    rememberSearch(query);
 
     fetchProducts({ q: query, limit: PAGE_SIZE }, controller.signal)
       .then((products) => setResults({ query, products, error: '' }))
@@ -80,6 +79,9 @@ export default function SearchScreen() {
   const submit = (term: string) => {
     const trimmed = term.trim();
     if (!trimmed) return;
+    // Remembered here, at the act of searching, rather than in the effect that
+    // fetches: a term is "recent" because somebody typed it.
+    rememberSearch(trimmed);
     router.setParams({ q: trimmed });
   };
 
@@ -119,9 +121,16 @@ export default function SearchScreen() {
         <View className="mt-10 gap-8">
           {recent.length > 0 ? (
             <View>
-              <Text className="text-muted-foreground text-sm font-semibold uppercase tracking-wider">
-                Recent searches
-              </Text>
+              <View className="flex-row items-center justify-between gap-3">
+                <Text className="text-muted-foreground text-sm font-semibold uppercase tracking-wider">
+                  Recent searches
+                </Text>
+                {/* A shop's phone is often a shared one; what was searched
+                    for on it should be the customer's to forget. */}
+                <Pressable accessibilityRole="button" onPress={clearRecentSearches}>
+                  <Text className="text-muted-foreground text-xs underline">Clear</Text>
+                </Pressable>
+              </View>
               <View className="mt-4 flex-row flex-wrap gap-2">
                 {recent.map((term) => (
                   <Pressable

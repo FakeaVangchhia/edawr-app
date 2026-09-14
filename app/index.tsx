@@ -58,7 +58,6 @@ interface Loaded {
   shelf: StoreProduct[];
   /** The two busiest categories, for the cards at the top. */
   featured: StoreCategory[];
-  productCount: number;
 }
 
 export default function HomeScreen() {
@@ -97,7 +96,6 @@ export default function HomeScreen() {
           // below never renders a short row of tiles nobody can buy.
           shelf: products.filter((product) => product.in_stock),
           featured: popular.slice(0, FEATURED_COUNT),
-          productCount: products.length,
         });
       })
       .catch((caught: unknown) => {
@@ -255,7 +253,7 @@ export default function HomeScreen() {
               <Text className="text-foreground text-2xl font-semibold">In the shop now</Text>
               <Text className="text-muted-foreground mt-1 text-sm">
                 {data
-                  ? data.shelf.length + ' of ' + data.productCount + ' items in stock today'
+                  ? data.shelf.length + ' items in stock today'
                   : 'Loading the shelves…'}
               </Text>
             </View>

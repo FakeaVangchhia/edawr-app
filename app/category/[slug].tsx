@@ -124,8 +124,10 @@ export default function CategoryScreen() {
       </View>
 
       <Text className="text-foreground mt-6 text-3xl font-semibold">{category.name}</Text>
+      {/* The category's own count, not the length of this page: the page is
+          capped, and it includes items that are sold out today. */}
       <Text className="text-muted-foreground num mt-3 text-base">
-        {products.length} {products.length === 1 ? 'item' : 'items'} in stock
+        {category.product_count} {category.product_count === 1 ? 'item' : 'items'}
       </Text>
 
       <View className="mt-10">
@@ -137,6 +139,21 @@ export default function CategoryScreen() {
           emptyBody="Everything here has sold out. It will be back once the shelf is restocked."
         />
       </View>
+
+      {/* One page, capped, so a big category hands over to the catalogue's
+          filter, which pages. */}
+      {category.product_count > products.length ? (
+        <View className="mt-8 flex-row flex-wrap items-center gap-x-1">
+          <Text className="text-muted-foreground text-sm">Showing the first {products.length}.</Text>
+          <Link href={{ pathname: '/products', params: { category: category.name } }} asChild>
+            <Pressable accessibilityRole="link">
+              <Text className="text-foreground text-sm font-medium underline">
+                See all {category.product_count} in the catalogue
+              </Text>
+            </Pressable>
+          </Link>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }

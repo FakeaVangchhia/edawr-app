@@ -32,22 +32,27 @@ const CATALOGUE_LIMIT = 120;
 export default function OffersScreen() {
   const config = useStoreConfig();
   const [discounted, setDiscounted] = useState<StoreProduct[] | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
 
     fetchProducts({ limit: CATALOGUE_LIMIT }, controller.signal)
-      .then((products) =>
+      .then((products) => {
+        if (controller.signal.aborted) return;
         setDiscounted(
           products
             .filter((product) => product.in_stock && product.discount_percent > 0)
             .sort((a, b) => b.discount_percent - a.discount_percent),
-        ),
-      )
-      // Swallowed into the empty state rather than surfaced: the delivery
-      // offers above do not depend on this request, and an error banner over a
-      // screen that still has three valid offers on it reads as broken.
-      .catch(() => setDiscounted([]));
+        );
+      })
+      // Kept apart from "nothing is discounted": a store that cannot be
+      // reached is not a store with no offers, and saying so would be a false
+      // statement about prices. The delivery offers above still render.
+      .catch((caught: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(caught instanceof Error ? caught.message : 'Could not load the offers.');
+      });
 
     return () => controller.abort();
   }, []);
@@ -124,6 +129,12 @@ export default function OffersScreen() {
           href="/products"
           promiseMinutes={config?.promise_minutes ?? null}
         />
+      ) : null}
+
+      {error ? (
+        <View style={{ paddingHorizontal: GUTTER }}>
+          <Text className="text-destructive text-sm">{error}</Text>
+        </View>
       ) : null}
 
       {discounted?.length === 0 ? (

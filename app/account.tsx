@@ -188,18 +188,14 @@ function AccountPanel() {
         </View>
 
         {/*
-          A disabled control rather than a hidden one: a customer who signs in
-          and sees no earlier orders needs to know why, and "we cannot send
-          codes yet" is a better answer than a screen that silently omits them.
+          A note rather than a button: there is no verification flow to start,
+          and a control that can never be pressed is worse than a sentence that
+          says why. A customer who signs in and sees no earlier orders needs to
+          know why.
         */}
         {!session.phoneVerified ? (
           <View className="bg-surface rounded-2xl p-4">
-            <View className="flex-row items-center justify-between gap-3">
-              <Text className="text-foreground text-sm font-medium">Number not verified</Text>
-              <View className="border-border h-9 items-center justify-center rounded-full border px-4 opacity-50">
-                <Text className="text-foreground text-xs font-medium">Verify</Text>
-              </View>
-            </View>
+            <Text className="text-foreground text-sm font-medium">Number not verified</Text>
             <Text className="text-muted-foreground mt-2 text-xs leading-relaxed">
               We cannot send verification codes yet. Orders you place while signed in are saved to
               your account either way — but orders placed as a guest, before this account existed,

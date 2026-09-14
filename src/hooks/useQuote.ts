@@ -23,7 +23,16 @@ export interface QuoteState {
   error: string;
 }
 
-export function useQuote(lines: CartLine[], deliveryType: DeliveryType): QuoteState {
+export function useQuote(
+  lines: CartLine[],
+  deliveryType: DeliveryType,
+  /**
+   * False until the basket has been read from storage. The lines are the empty
+   * placeholder until then, and quoting them is a request for a zeroed bill
+   * that the real basket replaces a frame later.
+   */
+  enabled = true,
+): QuoteState {
   const signature = quoteSignature(lines, deliveryType);
   const [state, setState] = useState<{
     signature: string;
@@ -32,6 +41,7 @@ export function useQuote(lines: CartLine[], deliveryType: DeliveryType): QuoteSt
   } | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
 
     quoteBasket(lines, deliveryType, controller.signal)
@@ -60,7 +70,7 @@ export function useQuote(lines: CartLine[], deliveryType: DeliveryType): QuoteSt
     // `signature` is the real dependency: it changes exactly when the basket or
     // the tier does, and `lines` is a fresh array on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
+  }, [signature, enabled]);
 
   const current = state?.signature === signature ? state : null;
 

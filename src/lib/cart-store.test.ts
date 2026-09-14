@@ -29,6 +29,7 @@ function product(overrides: Partial<StoreProduct> = {}): StoreProduct {
     in_stock: true,
     low_stock: false,
     discount_percent: 6,
+    saving: 4,
     ...overrides,
   };
 }

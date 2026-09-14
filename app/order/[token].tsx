@@ -630,7 +630,7 @@ export default function OrderTrackerScreen() {
 function riderNote(status: OrderStatus): string {
   if (status === 'Failed') return 'The rider who attempted this delivery has been released from it.';
   if (status === 'Delivered' || status === 'Cancelled') return 'No rider is attached to this order.';
-  return 'A rider is assigned once your order is packed and ready.';
+  return 'Your rider appears here the moment they set off with your order.';
 }
 
 function Row({ label, value }: { label: string; value: number }) {

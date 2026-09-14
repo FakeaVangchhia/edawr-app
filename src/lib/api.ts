@@ -357,7 +357,10 @@ async function attemptRequest<T>(
       // and deleting a valid token because the wifi went is how a customer gets
       // signed out on a train. This branch fires only when the server itself
       // said it does not recognise the credential.
-      if (response.status === 401) {
+      // A 401 to the sign-in form is a wrong password, and there is no
+      // session to end — without the header check that mistyped password
+      // toasted "You have been signed out".
+      if (response.status === 401 && requestHeaders.has('Authorization')) {
         clearSession();
         onSessionExpired?.();
       }

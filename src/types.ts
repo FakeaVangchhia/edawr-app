@@ -32,6 +32,8 @@ export interface StoreProduct {
   in_stock: boolean;
   low_stock: boolean;
   discount_percent: number;
+  /** Rupees off MRP, quantised by the server. 0 when there is no discount. */
+  saving: number;
 }
 
 export interface StoreCategory {

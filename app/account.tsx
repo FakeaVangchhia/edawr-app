@@ -23,7 +23,6 @@ import { useDraft } from '@/hooks/useDraft';
 import { useAddressBook, useProfile, useRecentOrders, useSession } from '@/hooks/useStoreData';
 import { selectedAddress, toDeliveryAddress } from '@/lib/addresses';
 import { changePassword, signOut, updateName } from '@/lib/customer-api';
-import { formatMoneyExact } from '@/lib/format';
 import { PASSWORD_HINT, passwordProblem } from '@/lib/password';
 import { clearProfile, hasProfile, saveProfile } from '@/lib/profile';
 import { clearSession, saveSession } from '@/lib/session';
@@ -341,7 +340,6 @@ export default function AccountScreen() {
   // The one client-side sum in the app, and it is over locally remembered
   // totals — figures the server already produced — not over prices. Nothing
   // here is charged.
-  const spent = orders.reduce((total, order) => total + order.total, 0);
 
   return (
     <ScrollView
@@ -478,12 +476,9 @@ export default function AccountScreen() {
                   {liveOrders}
                 </Text>
               </View>
-              <View>
-                <Text className="text-muted-foreground text-xs">Their total</Text>
-                <Text className="text-foreground num mt-0.5 text-2xl font-semibold">
-                  {formatMoneyExact(spent)}
-                </Text>
-              </View>
+              {/* No "total spent" beside it: summing the remembered totals in
+                  floating point is the client-side pricing this app forbids,
+                  and the figure is the server's to give. */}
             </View>
           </View>
         ) : null}

@@ -45,7 +45,7 @@ export default function CartScreen() {
   const { lines, hydrated } = useCart();
   const config = useStoreConfig();
   const [deliveryType, setDeliveryType] = useState<DeliveryType>(DEFAULT_DELIVERY_TYPE);
-  const { quote, isLoading, error } = useQuote(lines, deliveryType);
+  const { quote, isLoading, error } = useQuote(lines, deliveryType, hydrated);
 
   // Row totals, keyed by product, exactly as the server quantised them. Empty
   // while a quote is in flight, which is why the render below falls back to the

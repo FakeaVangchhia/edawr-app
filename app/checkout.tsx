@@ -165,7 +165,7 @@ export default function CheckoutScreen() {
     };
   }, []);
 
-  const { quote, isLoading, error } = useQuote(lines, deliveryType);
+  const { quote, isLoading, error } = useQuote(lines, deliveryType, hydrated);
 
   const outsideArea = isDeliverable(coords, config) === false;
   const distanceKm = distanceFromStore(coords, config);
@@ -318,10 +318,11 @@ export default function CheckoutScreen() {
           : 'Keep this order open — this device cannot remember it.',
       });
 
-      // Navigate first, empty the basket second. The other order re-renders
-      // this screen through the `lines.length === 0` branch below, so the
-      // customer sees "Nothing to check out" flash over a successful order
-      // while the router is still working.
+      // `isPlacing` stays true from here: emptying the basket would otherwise
+      // re-render this screen through the `lines.length === 0` branch below,
+      // and the customer would see "Nothing to check out" flash over a
+      // successful order while the router was still working. That branch
+      // checks the flag.
       router.replace({ pathname: '/order/[token]', params: { token: order.tracking_token } });
       clearCart();
     } catch (caught: unknown) {
@@ -345,7 +346,7 @@ export default function CheckoutScreen() {
 
   if (!hydrated) return <CheckoutSkeleton />;
 
-  if (lines.length === 0) {
+  if (lines.length === 0 && !isPlacing) {
     return (
       <View
         className="bg-background flex-1 items-center justify-center py-20"

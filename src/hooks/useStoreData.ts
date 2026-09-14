@@ -158,14 +158,14 @@ export function useStoreConfig(): StoreConfig | null {
   useEffect(() => {
     let cancelled = false;
 
-    const refresh = () => {
+    const refresh = (): Promise<void> => {
       if (isFresh()) {
         // Still adopt it: a component mounting inside the window needs the
         // cached value even though no request is due.
         if (!cancelled && cached) setConfig(cached);
-        return;
+        return Promise.resolve();
       }
-      loadConfig()
+      return loadConfig()
         .then((loaded) => {
           if (!cancelled) setConfig(loaded);
         })
@@ -178,17 +178,34 @@ export function useStoreConfig(): StoreConfig | null {
         });
     };
 
-    refresh();
-
     // Re-checked on a timer rather than only on mount, because the screens that
     // care — the cart and checkout — are exactly the ones a customer sits on
     // without navigating.
-    const timer = setInterval(() => {
-      if (!cancelled) {
+    //
+    // **Scheduled from the end of each attempt, not on a fixed grid from
+    // mount.** A request takes time, so `cachedAt` is always stamped a few
+    // milliseconds *after* the tick that asked for it. A grid tick exactly one
+    // TTL later therefore lands just *inside* the window it was meant to
+    // reopen, finds `isFresh()` still true, and does nothing — so every second
+    // tick was a no-op and the real refresh period was two minutes, not one.
+    // That is precisely the staleness the TTL exists to bound: an hour-long
+    // power cut is a manager hitting the kill switch, and the customer would
+    // keep being offered checkout for twice as long as intended.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timer = setTimeout(() => {
+        if (cancelled) return;
         setTick((n) => n + 1);
-        refresh();
-      }
-    }, CONFIG_TTL_MS);
+        // `finally`, so a failed attempt reschedules too — anchoring on the
+        // attempt rather than on `cachedAt` is also what keeps a run of
+        // failures from spinning: each retry is a full TTL after the last.
+        void refresh().finally(scheduleNext);
+      }, CONFIG_TTL_MS);
+    };
+    // The first attempt starts the chain, so even the first scheduled check is
+    // anchored on when the cache was actually written.
+    void refresh().finally(scheduleNext);
 
     // Coming back to the app after it was backgrounded. `isFresh()` still
     // guards the request, so a quick app-switch costs nothing and an hour away
@@ -202,7 +219,7 @@ export function useStoreConfig(): StoreConfig | null {
 
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      clearTimeout(timer);
       appState.remove();
     };
   }, []);

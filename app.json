@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "eDawr",
+    "slug": "edawr-customer",
+    "scheme": "edawr",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "primaryColor": "#080E20",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.edawr.store",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "eDawr",
+        "LSApplicationQueriesSchemes": [
+          "tel"
+        ],
+        "NSLocationWhenInUseUsageDescription": "Sharing your location lets the rider find your door, and lets us check the address is inside the delivery area. It is optional — a typed address is enough."
+      }
+    },
+    "android": {
+      "package": "com.edawr.store",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080E20"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#080E20"
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Sharing your location lets the rider find your door. It is optional — a typed address is enough."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "//": "Unlike the rider app, this one ships a purpose-made 96x96 transparent notification icon. Android renders the icon as a white silhouette of whatever it is given, so the app icon would come out an unrecognisable blob; a flat bolt on transparency silhouettes correctly. `color` is the accent Android tints it with, and `defaultChannel` must match CHANNEL_ID in edawr-backend/api/push.py — a mismatch is silent.",
+          "icon": "./assets/notification-icon.png",
+          "color": "#F5A623",
+          "defaultChannel": "orders"
+        }
+      ],
+      "expo-sqlite",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "//": "apiUrl is the backend a RELEASE build talks to. Development ignores it and auto-detects the dev machine's LAN IP instead (see src/config.ts). Leaving it null makes a release build fail loudly at startup rather than silently calling localhost — set it, or pass EXPO_PUBLIC_API_URL at build time.",
+      "apiUrl": null,
+      "//push": "Push needs an EAS project id, which `eas init` writes here as extra.eas.projectId. Until it exists src/push.ts declines to register and the app runs normally on the tracker's ten-second poll — a build with no project id is a working store that cannot be buzzed, which is a gap and not a failure. The backend half also has to be switched on (PUSH_ENABLED=true) with FCM/APNs credentials uploaded; see edawr-backend/api/push.py.",
+      "//cleartext": "There is deliberately no android.usesCleartextTraffic here, so cleartext stays OFF (the Android 9+ default). src/config.ts refuses an http:// API URL in a release build for the same reason: the customer's password and bearer token would otherwise cross the network in plaintext. (This key lives under extra because Expo validates the android block against a schema and rejects unknown properties.)",
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

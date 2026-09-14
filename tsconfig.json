@@ -1,0 +1,36 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // TypeScript 6 deprecates `baseUrl` and TypeScript 7 will drop it. It stays
+    // for now because removing it also stops `@types/jest` and
+    // `nativewind-env.d.ts` from being picked up, which buries the real output
+    // of `tsc` under hundreds of "Cannot find name 'describe'". Revisit when
+    // the project moves to TypeScript 7; the replacement is a `paths` entry
+    // resolved relative to this file, which needs the type resolution sorted
+    // out first.
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    // TypeScript 6 stopped pulling every `node_modules/@types` package into the
+    // global scope on its own, so the test globals (`describe`, `expect`) and
+    // Node's have to be named. Listing them is also the stricter arrangement:
+    // a stray `@types/*` arriving as some dependency's transitive install can
+    // no longer quietly widen the global namespace.
+    "types": [
+      "jest",
+      "node"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "nativewind",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts"
+  ]
+}

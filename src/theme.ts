@@ -39,6 +39,10 @@ export const colors = {
   destructive: '#D40C1A',
   destructiveForeground: '#FFFFFF',
   destructiveSoft: '#FFF0ED',
+  /** The poll sticker only, and never `destructive` — see tailwind.config.js. */
+  rose: '#D41F37',
+  roseForeground: '#FFFFFF',
+  roseSoft: '#FFEDEC',
   border: '#E4E6EA',
   input: '#E4E6EA',
   ring: '#F7A438',

@@ -19,17 +19,19 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ImageFallback } from '@/components/ImageFallback';
+import { PromoCarousel } from '@/components/PromoCarousel';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductRail } from '@/components/ProductRail';
+import { SuggestionSticker } from '@/components/SuggestionSticker';
 import { Rise, Skeleton } from '@/components/ui/motion';
 import { useAddressBook, useStoreConfig } from '@/hooks/useStoreData';
 import { selectedAddress } from '@/lib/addresses';
 import { assetUrl } from '@/lib/api';
 import { buildHomeRows, slugify, type ProductRow } from '@/lib/catalogue';
 import { formatMoney } from '@/lib/format';
-import { fetchCategories, fetchProducts } from '@/lib/store-api';
+import { fetchCategories, fetchProducts, fetchPromos } from '@/lib/store-api';
 import { GUTTER, colors } from '@/theme';
-import type { StoreCategory, StoreProduct } from '@/types';
+import type { StoreCategory, StoreProduct, StorePromo } from '@/types';
 
 /** One page of the catalogue is plenty to build every row from. */
 const HOME_PRODUCT_LIMIT = 120;
@@ -58,6 +60,8 @@ interface Loaded {
   shelf: StoreProduct[];
   /** The two busiest categories, for the cards at the top. */
   featured: StoreCategory[];
+  /** The console's banners, already filtered to the live ones by the API. */
+  promos: StorePromo[];
 }
 
 export default function HomeScreen() {
@@ -83,8 +87,14 @@ export default function HomeScreen() {
       // units sold across its products over the last thirty days, which only
       // the server can count.
       fetchCategories(controller.signal, { sort: 'popular' }),
+      // Banners must not be able to take the shop down with them. They are the
+      // one part of this screen that is decoration if it fails — the web gets
+      // this for free because `app/page.tsx` fetches them server-side and
+      // catches there; here the catch has to be per-call, inside the Promise.all
+      // that would otherwise reject the lot.
+      fetchPromos(controller.signal).catch(() => [] as StorePromo[]),
     ])
-      .then(([categories, products, popular]) => {
+      .then(([categories, products, popular, promos]) => {
         // Guarded like the catch below, which always was. This resolves after a
         // round trip the customer may have navigated away from, and the abort
         // in the cleanup does not stop an already-resolved promise from writing.
@@ -96,6 +106,7 @@ export default function HomeScreen() {
           // below never renders a short row of tiles nobody can buy.
           shelf: products.filter((product) => product.in_stock),
           featured: popular.slice(0, FEATURED_COUNT),
+          promos,
         });
       })
       .catch((caught: unknown) => {
@@ -130,8 +141,16 @@ export default function HomeScreen() {
             <View className="mt-2 flex-row flex-wrap items-center gap-x-4 gap-y-1">
               <View className="flex-row items-center gap-1.5">
                 <Zap size={14} color={colors.amber} fill={colors.amber} />
+                {/* The street line, not the saved label — two entries can both
+                    be called "Home", and the label does not say where the rider
+                    is going. The city is appended only when the customer did
+                    not already type it. */}
                 <Text className="text-muted-foreground text-[13px]">
-                  {address ? 'Deliver to ' + address.label + ' · ' + city : 'Delivering across ' + city}
+                  {address
+                    ? 'Deliver to ' +
+                      address.line +
+                      (address.line.toLowerCase().includes(city.toLowerCase()) ? '' : ', ' + city)
+                    : 'Delivering across ' + city}
                 </Text>
               </View>
               {config ? (
@@ -174,6 +193,18 @@ export default function HomeScreen() {
           rest of the screen down — and someone who taps where a card is about
           to appear hits whatever arrives instead.
         */}
+        {/*
+          Banners, between the headline and the featured cards exactly as on the
+          web. Nothing is reserved for them while they load: a shop with none —
+          every shop on day one — would otherwise get a band that painted and
+          then collapsed on every launch. See PromoCarousel's docblock.
+        */}
+        {data && data.promos.length > 0 ? (
+          <View className="pb-6">
+            <PromoCarousel promos={data.promos} />
+          </View>
+        ) : null}
+
         {data === null || data.featured.length > 0 ? (
           <View className="gap-4 pb-6" style={{ paddingHorizontal: GUTTER }}>
             {data
@@ -237,6 +268,13 @@ export default function HomeScreen() {
       </View>
 
       {/*
+        The poll, between the category strip and the shop, as on the web. High
+        enough that it is seen, below enough that it never stands between the
+        customer and something they can buy.
+      */}
+      <SuggestionSticker />
+
+      {/*
         The shop itself, and the reason the band above is a band.
 
         The rails below still earn their place: they are *cuts* of the same
@@ -289,6 +327,17 @@ export default function HomeScreen() {
       {config ? (
         <View className="py-12" style={{ paddingHorizontal: GUTTER }}>
           <View className="bg-primary gap-6 rounded-4xl p-10">
+            <View>
+              {/* The light twin, on navy. Same master, same script as the
+                  header's dark one and as the storefront's. */}
+              <Image
+                source={require('../assets/edawr-wordmark-light.png')}
+                style={{ height: 24, width: (24 * 720) / 183, opacity: 0.9 }}
+                resizeMode="contain"
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            </View>
             <View>
               <Text className="text-primary-foreground text-3xl font-semibold">
                 Free delivery over {formatMoney(config.free_delivery_above)}.

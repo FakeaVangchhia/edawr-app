@@ -8,6 +8,7 @@ import type {
   StoreCategory,
   StoreConfig,
   StoreProduct,
+  StorePromo,
   TrackedOrder,
 } from '@/types';
 
@@ -44,6 +45,34 @@ export interface ProductQuery {
 
 export function fetchStoreConfig(signal?: AbortSignal): Promise<StoreConfig> {
   return request<StoreConfig>('/api/store/config', { signal });
+}
+
+/** The home-screen banners, in the order the console arranged them. */
+export function fetchPromos(signal?: AbortSignal): Promise<StorePromo[]> {
+  return request<StorePromo[]>('/api/store/promos', { signal });
+}
+
+/**
+ * One answer to the poll sticker on the home screen.
+ *
+ * The token is attached when there is one, for the same reason `placeOrder`
+ * does it: the server takes the customer from the token and never from the
+ * body, so a signed-in answer can be attributed and a guest's cannot. The
+ * endpoint is public either way — it has to be, since the sticker is on the
+ * home screen and most people reading it have no account.
+ *
+ * **No guest retry on a stale token**, unlike checkout. If the token has
+ * expired the answer fails and the customer sees one inline line; retrying it
+ * anonymously would mean silently detaching an answer from the account that
+ * wrote it, which is a worse outcome than asking them to tap Send again.
+ */
+export function submitSuggestion(text: string): Promise<{ id: number }> {
+  const token = readToken();
+  return request<{ id: number }>('/api/store/suggestions', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: { text },
+  });
 }
 
 export interface CategoryQuery {

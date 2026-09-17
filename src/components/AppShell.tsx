@@ -78,21 +78,31 @@ function OfflineBanner() {
  * pixels. Both used to draw a lucide <Zap> instead, because no logo file
  * existed to point at.
  *
- * The mark and not the whole badge for the same reason as on the web: the
- * badge's only content is the word "eDawr", and at 32pt that wordmark is
- * unreadable.
+ * **The wordmark, not the mark plus a typed name.** It used to be the amber "e"
+ * tile beside the word "eDawr" set in Inter — which is a lockup assembled at
+ * render time out of two things that were never drawn together, and it drifted
+ * from the storefront the moment either changed. The storefront made the same
+ * switch (`edawr-frontend/src/components/AppShell.tsx`), and the file is
+ * generated from the same master by the same script, so the two headers cannot
+ * disagree again.
+ *
+ * The dark twin: dark ink, for the white header. The light one is for the navy
+ * card on the home screen.
  */
 function Logo() {
   return (
     <Link href="/" asChild>
-      <Pressable accessibilityRole="link" accessibilityLabel="eDawr, home" className="flex-row items-center gap-2">
+      <Pressable accessibilityRole="link" accessibilityLabel="eDawr, home">
         <Image
-          source={require('../../assets/mark.png')}
-          style={{ width: 32, height: 32, borderRadius: 12 }}
+          source={require('../../assets/edawr-wordmark-dark.png')}
+          // Height-led, width derived: the master is 720x183, and letting the
+          // width follow keeps the letterforms at their drawn proportions
+          // rather than at whatever the row happens to leave.
+          style={{ height: 28, width: (28 * 720) / 183 }}
+          resizeMode="contain"
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
-        <Text className="text-foreground text-[17px] font-semibold">eDawr</Text>
       </Pressable>
     </Link>
   );
@@ -130,15 +140,24 @@ function LocationPicker({ onOpen }: { onOpen: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={'Deliver to ' + saved.label + ', ' + saved.city + '. Change address.'}
+      accessibilityLabel={'Deliver to ' + saved.line + ', ' + saved.city + '. Change address.'}
       onPress={onOpen}
       className="flex-row items-center gap-2 self-start rounded-full px-3 py-2"
     >
       <MapPin size={16} color={colors.amber} />
-      <View>
-        <Text className="text-muted-foreground text-2xs">Deliver to</Text>
-        <Text className="text-foreground text-[13px] font-medium">
-          {saved.label} · {saved.city || config?.store_city || ''}
+      {/*
+        The street line, not the saved label. "Home · Aizawl" told a customer
+        which entry was selected; it did not tell them where the rider is going,
+        and two entries can both be called Home. The label moves up into the
+        caption, where it still says which one this is.
+      */}
+      <View className="min-w-0 shrink">
+        <Text className="text-muted-foreground text-2xs" numberOfLines={1}>
+          Deliver to {saved.label}
+          {saved.city || config?.store_city ? ' · ' + (saved.city || config?.store_city) : ''}
+        </Text>
+        <Text className="text-foreground text-[13px] font-medium" numberOfLines={1}>
+          {saved.line}
         </Text>
       </View>
       <ChevronDown size={16} color={colors.mutedForeground} />

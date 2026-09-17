@@ -18,7 +18,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -33,12 +33,41 @@ import { ConfigErrorScreen, ErrorBoundary } from '@/ErrorBoundary';
 import { configError } from '@/config';
 import { setSessionExpiredHandler } from '@/lib/api';
 import { refreshSession } from '@/lib/customer-api';
-import { reportClientError } from '@/lib/report-error';
+import { reportClientError, setReportedRoute } from '@/lib/report-error';
 import { addOrderNotificationListener, registerForPushNotifications } from '@/push';
 import { readSession, saveSession } from '@/lib/session';
 import '../global.css';
 
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * Keeps `report-error.ts` told which screen is on top.
+ *
+ * A crash report from this app named no route at all, so fifteen screens
+ * produced one undifferentiated pile in the log while the storefront's reports
+ * said exactly which page had broken.
+ *
+ * It is a component rather than a hook call in `RootLayout` because
+ * `useSegments()` subscribes to navigation: called up there it would re-render
+ * the header, the nav and the Stack on every screen change, to maintain a
+ * string that is read only when something has already gone wrong. Here the
+ * re-render is this component, and this component renders `null`.
+ *
+ * `useSegments()` returns the route *pattern* — `['order', '[token]']` — not
+ * the resolved path, so the tracking token never reaches the string. That is
+ * the whole credential for the tracking page and for
+ * `POST /api/customer/orders/claim`, and the storefront had to strip it out of
+ * `location.pathname` by hand; here it simply never arrives.
+ */
+function RouteProbe() {
+  const segments = useSegments();
+
+  useEffect(() => {
+    setReportedRoute('/' + segments.join('/'));
+  }, [segments]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -138,6 +167,7 @@ export default function RootLayout() {
             })
           }
         >
+          <RouteProbe />
           <View className="bg-background flex-1">
             <OfflineBanner />
             <AppHeader

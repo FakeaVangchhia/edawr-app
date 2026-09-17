@@ -36,6 +36,28 @@ export interface StoreProduct {
   saving: number;
 }
 
+/**
+ * A banner on the home screen, from `GET /api/store/promos`.
+ *
+ * Only what the app needs to draw it. Whether it is live was decided
+ * server-side: `Promo.live()` applies each banner's `starts_at`/`ends_at`
+ * window and `StorePromoSerializer` strips the status and the dates, so this
+ * type has no notion of a banner that is not showing.
+ */
+export interface StorePromo {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  /** Relative `/uploads/<name>` path, or null for a banner that is title on navy. */
+  image_url: string | null;
+  /**
+   * A path in this app, or one of the external destinations the API allows —
+   * `https://`/`http://`, `tel:`, `mailto:`. Null means the full catalogue.
+   * `lib/promo-link.ts` is what turns it into a destination and a button label.
+   */
+  link: string | null;
+}
+
 export interface StoreCategory {
   name: string;
   image_url: string | null;

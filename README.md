@@ -134,18 +134,22 @@ Each of these is commented where it happens; this is the index.
 | **Toasts** | `sonner` has no React Native build. `components/ui/toast.tsx` is the same API in about a hundred lines, plus a single `action` — the basket's "Clear all" is destructive and one tap, and both apps offer it back rather than leaving it final. **The second half of this reason has expired:** it used to read that `sonner-native` needed a newer `react-native-worklets` than SDK 54 pinned, and it did — 0.5.1 against a `>=0.6.1` peer. SDK 57 pins 0.10.1, so `sonner-native` would now install. The hundred lines stay because they are written, tested and doing the job, which is a different and weaker argument than the one it replaces. |
 | **Sticky CTAs** | The web's tab bar is `position: fixed` and overlays the page, so cart and checkout lift their action bars by its height (`--tabbar-height`). Nothing overlays anything here: the root layout is a column — header, screen, `MobileNav` — so a screen's bottom edge already *is* the top of the tab bar and the CTAs sit at `bottom-0`. Copying the web's offset left the primary button floating in 68px of dead space. The `Toaster` is the exception that proves it: it is absolute against the whole window, outside that column, so it does have to clear the bar. |
 | **Push** | New. The web has no equivalent — see below. |
+| **Banner rail** | The web's carousel is a CSS scroll-snap rail whose active dot comes from an `IntersectionObserver`; there is neither here, so it is a `ScrollView` with `snapToInterval` and dot arithmetic in `onMomentumScrollEnd`. The desktop arrows are gone — every viewport here has a thumb — and the dots are decorative rather than buttons, because a 6px tap target is one nobody can hit. The banners are fetched by the screen instead of server-rendered, so a promos failure is caught per-call inside the `Promise.all` rather than taking the shop down with it. |
+| **Banner scrim** | No CSS gradient in React Native. The navy fade the banner copy sits on is drawn with `react-native-svg`, the same answer `ImageFallback` already gives to the same problem. |
+| **External banner links** | `Linking.openURL` instead of an `<a target="_blank">`. `promo-link.ts` is otherwise byte-identical, `newTab` included: there are no tabs, but the flag still separates a website (leaves the app) from `tel:`/WhatsApp (hands off and hands back), which is what words the button. |
+| **Poll ribbon** | The web's rotated corner ribbon is trimmed by the card's `overflow: hidden`. React Native clips a transformed child unreliably across platforms, so the sticker keeps the "Tell us" eyebrow and drops the ribbon rather than shipping something flush on iOS and ragged on Android. |
+| **Poll throttle copy** | Better here than on the web: `ApiError` carries `retryAfterSeconds` from the `Retry-After` header, so a 429 says "try again in about 3 minutes" rather than "in a little while". |
+| **Crash route** | The storefront reads `location.pathname` and has to strip `/order/<token>` out of it by hand before reporting, because that token is the whole credential for the tracking page. `useSegments()` hands back the route *pattern* (`['order', '[token]']`), so nothing secret can reach the report here. It is read from a `RouteProbe` component rather than a hook in the root layout, because `useSegments()` subscribes to navigation and calling it up there would re-render the header, the nav and the Stack on every screen change. |
 
-**Pending port — the two apps currently disagree about the home screen.** On
-2026-09-11 the storefront's `HomePage.tsx` gained a console-managed banner
-carousel above the two featured category cards (`GET /api/store/promos`), a
-red poll sticker that posts to `POST /api/store/suggestions`, a static
-"Coming soon" row (`lib/coming-soon.ts`), and the wordmark logo
-(`edawr-wordmark-*.png`) in place of the mark-plus-name lockup; its header and
-hero now show the saved address's street line rather than its label. None of
-that is in `app/index.tsx` yet. It is not a platform exception — it is work
-not yet done, and this note should be deleted when it is. (The "Slow" → "Saver"
-tier label *is* in both, because the label is server-sent and only the
-fallback in `lib/delivery.ts` needed the word changed.)
+**The home screen is ported.** The carousel, the poll sticker, the wordmark and
+the address street line all landed on 2026-09-16 and are indexed above. The one
+item on the old pending list that is *not* here is the "Coming soon" row, and
+that is because it is no longer on the storefront either — `ComingSoon.tsx` and
+`lib/coming-soon.ts` were deleted in `e55cba9`. Porting it would have
+reintroduced something removed on purpose.
+
+(The "Slow" → "Saver" tier label is in both, because the label is server-sent
+and only the fallback in `lib/delivery.ts` needed the word changed.)
 
 ## Notifications
 

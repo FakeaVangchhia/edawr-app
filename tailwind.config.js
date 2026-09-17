@@ -62,6 +62,12 @@ module.exports = {
         amber: { DEFAULT: '#F7A438', foreground: '#070D1E', soft: '#FFF4DC' },
         success: { DEFAULT: '#007E46', soft: '#E3F8E9' },
         destructive: { DEFAULT: '#D40C1A', foreground: '#FFFFFF', soft: '#FFF0ED' },
+        // The poll sticker's red, and deliberately **not** `destructive`.
+        // A question should not borrow the colour that means "something
+        // failed" on the checkout screen. Converted from the storefront's
+        // oklch(0.56 0.21 22) family in globals.css, which is where the
+        // decision was made.
+        rose: { DEFAULT: '#D41F37', foreground: '#FFFFFF', soft: '#FFEDEC' },
         border: '#E4E6EA',
         input: '#E4E6EA',
         ring: '#F7A438',

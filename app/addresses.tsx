@@ -108,7 +108,7 @@ export default function AddressesScreen() {
           </View>
 
           <View className="mt-4 gap-4">
-            <Field label="Label" value={label} onChange={setLabel} placeholder="Home, Work, Mum's" />
+            <Field label="Save as" value={label} onChange={setLabel} placeholder="Home, Work, Mum's" />
             <Field
               label="City"
               value={city}

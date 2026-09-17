@@ -9,6 +9,7 @@ import type {
   StoreConfig,
   StoreProduct,
   StorePromo,
+  RiderPosition,
   TrackedOrder,
 } from '@/types';
 
@@ -279,5 +280,43 @@ export function cancelOrder(token: string, reason: string): Promise<TrackedOrder
   return request<TrackedOrder>(`/api/store/orders/${encodeURIComponent(token)}/cancel`, {
     method: 'POST',
     body: { reason },
+  });
+}
+
+/**
+ * Where the rider is right now, or `null` when there is nothing to draw.
+ *
+ * Polled on its own, a few seconds apart, while the much larger order payload
+ * is fetched rarely. Public under the tracking token for the same reason the
+ * order is. This is the seam a push source would replace: a Firebase listener
+ * produces the same `RiderPosition | null` and nothing above it changes.
+ */
+export async function fetchRiderPosition(
+  token: string,
+  signal?: AbortSignal,
+): Promise<RiderPosition | null> {
+  const answer = await request<{ rider: RiderPosition | null }>(
+    `/api/store/orders/${encodeURIComponent(token)}/rider-location`,
+    { signal },
+  );
+  return answer.rider ?? null;
+}
+
+/**
+ * Tell the rider where the customer is actually waiting. Opt-in, and never the
+ * checkout position — the server keeps it in its own row. 204 on success, 409
+ * once the order is over.
+ */
+export function shareCustomerPosition(
+  token: string,
+  position: { latitude: number; longitude: number; accuracy_m?: number | null },
+): Promise<void> {
+  return request<void>(`/api/store/orders/${encodeURIComponent(token)}/location`, {
+    method: 'POST',
+    body: {
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy_m: position.accuracy_m ?? null,
+    },
   });
 }

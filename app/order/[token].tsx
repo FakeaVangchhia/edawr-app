@@ -35,6 +35,7 @@ import { useEffect, useState } from 'react';
 import { AppState, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ImageFallback } from '@/components/ImageFallback';
+import { LiveRider } from '@/components/LiveRider';
 import { PulseSoft, Skeleton } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toast';
 import { useSession } from '@/hooks/useStoreData';
@@ -498,6 +499,10 @@ export default function OrderTrackerScreen() {
               </Text>
             </View>
           )}
+          {/* Live only while the order is Dispatched — the API answers
+              nothing outside that window, and the component draws nothing
+              outside it either. */}
+          <LiveRider token={token} active={order.status === 'Dispatched'} />
         </View>
 
         <View className="border-border/70 rounded-4xl border p-6">

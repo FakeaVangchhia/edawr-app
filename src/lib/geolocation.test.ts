@@ -1,5 +1,7 @@
 import { stubGlobal, unstubAllGlobals } from './test-globals';
 import {
+  bearingDegrees,
+  compassPoint,
   distanceFromStore,
   haversineKm,
   isDeliverable,
@@ -124,7 +126,17 @@ describe('requestPosition', () => {
     await expect(requestPosition()).resolves.toEqual({
       coords: { latitude: 23.73, longitude: 92.72 },
       failure: null,
+      accuracyM: null,
     });
+  });
+
+  it('carries the accuracy radius when the device reports one', async () => {
+    Location.getForegroundPermissionsAsync.mockResolvedValue(granted);
+    Location.getCurrentPositionAsync.mockResolvedValue({
+      coords: { latitude: 23.73, longitude: 92.72, accuracy: 18.5 },
+    });
+
+    await expect(requestPosition()).resolves.toMatchObject({ accuracyM: 18.5 });
   });
 
   it('asks for permission when it has not been asked before', async () => {
@@ -137,6 +149,7 @@ describe('requestPosition', () => {
     await expect(requestPosition()).resolves.toEqual({
       coords: { latitude: 23.73, longitude: 92.72 },
       failure: null,
+      accuracyM: null,
     });
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
   });
@@ -194,5 +207,28 @@ describe('requestPosition', () => {
       coords: null,
       failure: 'unavailable',
     });
+  });
+});
+
+describe('bearingDegrees and compassPoint', () => {
+  const STORE_POINT: Coordinates = { latitude: 23.7272, longitude: 92.7178 };
+
+  it('is north for a point straight up the same meridian', () => {
+    const bearing = bearingDegrees(STORE_POINT, { latitude: 23.8, longitude: 92.7178 });
+    expect(bearing).toBeCloseTo(0, 5);
+    expect(compassPoint(bearing)).toBe('north');
+  });
+
+  it('is east for a point along the same parallel', () => {
+    const bearing = bearingDegrees(STORE_POINT, { latitude: 23.7272, longitude: 92.8 });
+    expect(bearing).toBeGreaterThan(89);
+    expect(bearing).toBeLessThan(91);
+    expect(compassPoint(bearing)).toBe('east');
+  });
+
+  it('rounds a bearing to the nearest of eight points, and wraps', () => {
+    expect(compassPoint(44)).toBe('north-east');
+    expect(compassPoint(340)).toBe('north');
+    expect(compassPoint(-90)).toBe('west');
   });
 });

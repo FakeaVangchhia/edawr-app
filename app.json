@@ -20,7 +20,7 @@
         "LSApplicationQueriesSchemes": [
           "tel"
         ],
-        "NSLocationWhenInUseUsageDescription": "Sharing your location lets the rider find your door, and lets us check the address is inside the delivery area. It is optional — a typed address is enough."
+        "NSLocationWhenInUseUsageDescription": "eDawr uses your location to fill in your delivery address, help the rider find your door, and check you are inside the delivery area. It is optional — you can type an address instead."
       }
     },
     "android": {
@@ -55,7 +55,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Sharing your location lets the rider find your door. It is optional — a typed address is enough."
+          "//": "Foreground only, like the rider app. requestPosition and the tracking screen's \"Share my location\" only ever call requestForegroundPermissionsAsync, so an Always string would declare a background permission the app never asks for.",
+          "locationWhenInUsePermission": "eDawr uses your location to fill in your delivery address, help the rider find your door, and check you are inside the delivery area. It is optional — you can type an address instead."
         }
       ],
       [

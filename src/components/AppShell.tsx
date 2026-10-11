@@ -24,7 +24,7 @@ import {
   User,
 } from 'lucide-react-native';
 import { useSyncExternalStore } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Pop } from '@/components/ui/motion';
@@ -35,6 +35,7 @@ import {
 } from '@/lib/cart-store';
 import { selectedAddress } from '@/lib/addresses';
 import { isTabActive, type TabKey } from '@/lib/nav';
+import { useLocateState } from '@/hooks/useCurrentLocation';
 import { useAddressBook, useIsOnline, useStoreConfig } from '@/hooks/useStoreData';
 import { colors, GUTTER } from '@/theme';
 
@@ -119,6 +120,22 @@ function LocationPicker({ onOpen }: { onOpen: () => void }) {
   const book = useAddressBook();
   const config = useStoreConfig();
   const saved = selectedAddress(book);
+  const { status } = useLocateState();
+
+  if (!saved && status === 'locating') {
+    return (
+      <View
+        accessibilityLiveRegion="polite"
+        className="flex-row items-center gap-2 self-start rounded-full px-3 py-2"
+      >
+        <ActivityIndicator size="small" color={colors.amber} />
+        <View>
+          <Text className="text-muted-foreground text-2xs">Deliver to</Text>
+          <Text className="text-foreground text-[13px] font-medium">Finding your location…</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!saved) {
     return (

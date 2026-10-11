@@ -34,12 +34,18 @@ import { toast } from '@/components/ui/toast';
 import { useDraft } from '@/hooks/useDraft';
 import { useQuote } from '@/hooks/useQuote';
 import { useAddressBook, useCart, useProfile, useSession, useStoreConfig } from '@/hooks/useStoreData';
-import { addAddress, selectAddress, selectedAddress, toDeliveryAddress } from '@/lib/addresses';
+import {
+  addAddress,
+  coordsFor,
+  selectAddress,
+  selectedAddress,
+  toDeliveryAddress,
+} from '@/lib/addresses';
 import { ApiError, assetUrl } from '@/lib/api';
 import { clearCart } from '@/lib/cart-store';
 import { clearCheckoutAttempt } from '@/lib/checkout-attempt';
 import { signUp } from '@/lib/customer-api';
-import { DEFAULT_DELIVERY_TYPE } from '@/lib/delivery';
+import { DEFAULT_DELIVERY_TYPE, hasTierChoice } from '@/lib/delivery';
 import { formatMoney } from '@/lib/format';
 import {
   distanceFromStore,
@@ -54,6 +60,7 @@ import { recentOrdersArePersisted, rememberOrder } from '@/lib/recent-orders';
 import { saveSession } from '@/lib/session';
 import { registerForPushNotifications } from '@/push';
 import { placeOrder } from '@/lib/store-api';
+import { checkoutBlocked, flaggedItems, parseUnavailable } from '@/lib/unavailable';
 import { isValidAddress, isValidIndianMobile, isValidName } from '@/lib/validation';
 import { GUTTER, colors } from '@/theme';
 import type { DeliveryType, UnavailableItem } from '@/types';
@@ -167,8 +174,15 @@ export default function CheckoutScreen() {
 
   const { quote, isLoading, error } = useQuote(lines, deliveryType, hydrated);
 
-  const outsideArea = isDeliverable(coords, config) === false;
-  const distanceKm = distanceFromStore(coords, config);
+  /**
+   * The position the order is sent with: one shared on this screen, else the
+   * one the selected address was located at, while the address box still
+   * describes it (see `coordsFor`).
+   */
+  const position = coords ?? coordsFor(saved, address);
+
+  const outsideArea = isDeliverable(position, config) === false;
+  const distanceKm = distanceFromStore(position, config);
   // `is_open` is false while the shop is shut or a manager has paused orders.
   // Checked here as well as on the cart because a customer can sit on this
   // screen through a closing time, and because the server will refuse anyway —
@@ -248,8 +262,8 @@ export default function CheckoutScreen() {
           // Sent as a pair or not at all: the server rejects half a position,
           // because latitude without longitude is a client bug rather than a
           // partial answer.
-          ...(coords
-            ? { customer_latitude: coords.latitude, customer_longitude: coords.longitude }
+          ...(position
+            ? { customer_latitude: position.latitude, customer_longitude: position.longitude }
             : {}),
         },
         deliveryType,
@@ -332,8 +346,7 @@ export default function CheckoutScreen() {
       // was built. Naming the exact rows is the difference between a customer
       // fixing it in one tap and a customer giving up.
       if (caught instanceof ApiError && caught.isConflict) {
-        const rows = caught.payload.unavailable;
-        if (Array.isArray(rows)) setUnavailable(rows as UnavailableItem[]);
+        setUnavailable(parseUnavailable(caught.payload.unavailable));
         setFailure(caught.message);
       } else {
         setFailure(
@@ -368,8 +381,8 @@ export default function CheckoutScreen() {
     );
   }
 
-  const blocked =
-    unavailable.length > 0 || quote?.meets_minimum === false || storeClosed || outsideArea;
+  const flagged = flaggedItems(unavailable, quote);
+  const blocked = checkoutBlocked({ quote, flagged, storeClosed, outsideArea });
   const ctaDisabled = isPlacing || isLoading || blocked;
 
   return (
@@ -496,7 +509,7 @@ export default function CheckoutScreen() {
                     <Crosshair size={16} color={colors.foreground} />
                   )}
                   <Text className="text-foreground text-sm font-semibold">
-                    {coords ? 'Update my location' : 'Share my location'}
+                    {position ? 'Update my location' : 'Share my location'}
                   </Text>
                 </Pressable>
                 <Text className="text-muted-foreground flex-1 text-xs">
@@ -520,8 +533,8 @@ export default function CheckoutScreen() {
                     ' km from the store, outside the ' +
                     config?.delivery_radius_km +
                     ' km delivery area.'
-                  : coords
-                    ? 'Location shared' +
+                  : position
+                    ? (coords ? 'Location shared' : 'Using your saved location') +
                       (distanceKm !== null ? ' · ' + distanceKm + ' km from the store' : '') +
                       '.'
                     : locationNote}
@@ -607,19 +620,21 @@ export default function CheckoutScreen() {
             ) : null}
           </View>
 
-          {/* --- Delivery speed --------------------------------------- */}
-          <View className="border-border/70 rounded-4xl border p-6">
-            <Text className="text-foreground text-lg font-semibold">Delivery speed</Text>
-            <View className="mt-4">
-              <DeliveryTierPicker
-                config={config}
-                quote={quote}
-                selected={deliveryType}
-                onSelect={setDeliveryType}
-                disabled={isPlacing}
-              />
+          {/* --- Delivery speed: only when there is one to choose ----- */}
+          {hasTierChoice(config) ? (
+            <View className="border-border/70 rounded-4xl border p-6">
+              <Text className="text-foreground text-lg font-semibold">Delivery speed</Text>
+              <View className="mt-4">
+                <DeliveryTierPicker
+                  config={config}
+                  quote={quote}
+                  selected={deliveryType}
+                  onSelect={setDeliveryType}
+                  disabled={isPlacing}
+                />
+              </View>
             </View>
-          </View>
+          ) : null}
 
           {/* --- Payment: a statement, not a control ------------------- */}
           <View className="border-border/70 rounded-4xl border p-6">
@@ -644,7 +659,7 @@ export default function CheckoutScreen() {
               <View className="mt-4 gap-3">
                 {lines.map((line) => {
                   const image = assetUrl(line.product.image_url);
-                  const problem = unavailable.find((item) => item.product_id === line.product.id);
+                  const problem = flagged.find((item) => item.product_id === line.product.id);
                   return (
                     <View
                       key={line.product.id}
@@ -707,10 +722,15 @@ export default function CheckoutScreen() {
               </View>
             ) : null}
 
-            {failure ? (
+            {/* Shown for the quote's list too, not only after a refused
+                checkout: the button is already disabled by then, and a
+                disabled button with no reason beside it reads as broken. */}
+            {failure || flagged.length > 0 ? (
               <View className="bg-destructive-soft rounded-2xl px-4 py-3">
-                <Text className="text-destructive text-sm">{failure}</Text>
-                {unavailable.length > 0 ? (
+                <Text className="text-destructive text-sm">
+                  {failure || 'Some items in your basket are no longer available.'}
+                </Text>
+                {flagged.length > 0 ? (
                   <Link href="/cart" asChild>
                     <Pressable accessibilityRole="link" className="mt-2 self-start">
                       <Text className="text-destructive text-sm font-semibold underline">
@@ -743,7 +763,7 @@ export default function CheckoutScreen() {
           <Text className="text-primary-foreground text-base font-semibold">
             {isPlacing ? 'Placing order…' : storeClosed ? 'Store closed' : 'Place order'}
           </Text>
-          {!isPlacing && !storeClosed && quote ? (
+          {!isPlacing && !storeClosed && quote && flagged.length === 0 ? (
             <Text className="text-primary-foreground num text-base font-semibold">
               · {formatMoney(quote.grand_total)}
             </Text>

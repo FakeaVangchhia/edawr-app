@@ -1,7 +1,7 @@
 /**
  * Where the backend lives, resolved once at startup.
  *
- * Copied from the rider app (`mobile/src/config.ts`) deliberately rather than
+ * Copied from the rider app (`edawr-delivery/src/config.ts`) deliberately rather than
  * rewritten: every rule below is a bug that already happened once on a real
  * phone, and the two apps should fail the same way for the same reasons.
  */
@@ -82,7 +82,13 @@ function stripTrailingSlash(url: string): string {
 // A phone can never reach the *computer's* localhost, so a localhost override is
 // treated as unset rather than obeyed.
 const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-const configuredApiUrl = (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl?.trim();
+// Only a string counts: since app.config.js was added, Expo's config
+// serialisation turns app.json's `"apiUrl": null` into `{}`, and `{}.trim()`
+// crashed the import of this module.
+const rawConfiguredApiUrl: unknown = (Constants.expoConfig?.extra as { apiUrl?: unknown } | undefined)
+  ?.apiUrl;
+const configuredApiUrl =
+  typeof rawConfiguredApiUrl === 'string' ? rawConfiguredApiUrl.trim() : undefined;
 
 function rejectInsecure(url: string, source: string): string {
   if (!__DEV__ && isInsecureUrl(url)) {

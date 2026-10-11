@@ -131,10 +131,8 @@ export default function HomeScreen() {
         <View className="gap-4 py-6" style={{ paddingHorizontal: GUTTER }}>
           <Rise>
             <Text className="text-foreground text-[26px] font-semibold leading-[1.1]">
-              Everything you need,{' '}
-              <Text className="text-muted-foreground">
-                {promise ? 'in ' + promise + ' minutes.' : 'in minutes.'}
-              </Text>
+              Daily essentials.{' '}
+              <Text className="text-muted-foreground">At your door step.</Text>
             </Text>
 
             {/* The three facts from the old stat block, as one line. */}

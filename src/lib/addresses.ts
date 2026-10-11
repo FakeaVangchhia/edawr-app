@@ -27,7 +27,31 @@ export interface SavedAddress {
   city: string;
   /** Optional, and genuinely useful in Aizawl, where streets are not numbered. */
   landmark: string;
+  /**
+   * Where the phone was when this address was located, or null for one typed
+   * by hand. Checkout sends them with the order, so a located address arrives
+   * with the coordinates the radius check and dispatch need.
+   */
+  latitude: number | null;
+  longitude: number | null;
 }
+
+/** What a caller supplies. Coordinates are optional: a typed address has none. */
+export type NewAddress = Omit<SavedAddress, 'id' | 'latitude' | 'longitude'> & {
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
+/**
+ * The fixed id of the located entry.
+ *
+ * Fixed so that locating again updates the one entry instead of adding
+ * "Current location" a second time every time the app is opened somewhere new.
+ */
+export const CURRENT_LOCATION_ID = 'current-location';
+
+const coordinate = (value: unknown, limit: number): number | null =>
+  typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
 
 export interface AddressBook {
   entries: SavedAddress[];
@@ -58,6 +82,9 @@ const store = createLocalStore<AddressBook>({
       line: entry.line,
       city: typeof entry.city === 'string' ? entry.city : '',
       landmark: typeof entry.landmark === 'string' ? entry.landmark : '',
+      // A pair or nothing, like the checkout body: half a position is a bug,
+      // and entries saved before coordinates existed have neither.
+      ...pair(entry.latitude, entry.longitude),
     }));
     if (entries.length === 0) return EMPTY;
 
@@ -73,6 +100,14 @@ const store = createLocalStore<AddressBook>({
     return { entries, selectedId };
   },
 });
+
+function pair(latitude: unknown, longitude: unknown) {
+  const lat = coordinate(latitude, 90);
+  const lng = coordinate(longitude, 180);
+  return lat !== null && lng !== null
+    ? { latitude: lat, longitude: lng }
+    : { latitude: null, longitude: null };
+}
 
 export const subscribeToAddresses = store.subscribe;
 export const getAddressesSnapshot = store.getSnapshot;
@@ -93,9 +128,13 @@ function newId(): string {
 }
 
 /** Saves a new address and selects it, which is always what the customer meant. */
-export function addAddress(input: Omit<SavedAddress, 'id'>): SavedAddress {
+export function addAddress(input: NewAddress): SavedAddress {
   const book = store.read();
-  const entry: SavedAddress = { ...input, id: newId() };
+  const entry: SavedAddress = {
+    ...input,
+    ...pair(input.latitude, input.longitude),
+    id: newId(),
+  };
   store.write({ entries: [...book.entries, entry], selectedId: entry.id });
   return entry;
 }
@@ -166,6 +205,35 @@ export function restoreAddress(
   });
 }
 
+/**
+ * Save where the phone is as the "Current location" entry, and select it.
+ *
+ * Replaces the previous located entry in place rather than adding another.
+ * Keeps its landmark, because that came from the customer and not from the
+ * geocoder.
+ */
+export function saveCurrentLocation(
+  input: Pick<SavedAddress, 'line' | 'city' | 'latitude' | 'longitude'>,
+): SavedAddress {
+  const book = store.read();
+  const previous = book.entries.find((entry) => entry.id === CURRENT_LOCATION_ID);
+  const entry: SavedAddress = {
+    id: CURRENT_LOCATION_ID,
+    label: 'Current location',
+    line: input.line,
+    city: input.city,
+    landmark: previous?.landmark ?? '',
+    ...pair(input.latitude, input.longitude),
+  };
+  store.write({
+    entries: previous
+      ? book.entries.map((existing) => (existing.id === CURRENT_LOCATION_ID ? entry : existing))
+      : [entry, ...book.entries],
+    selectedId: entry.id,
+  });
+  return entry;
+}
+
 export function selectAddress(id: string): void {
   const book = store.read();
   if (!book.entries.some((entry) => entry.id === id)) return;
@@ -185,4 +253,23 @@ export function toDeliveryAddress(entry: SavedAddress): string {
     .map((part) => part.trim())
     .filter(Boolean)
     .join(', ');
+}
+
+/**
+ * The saved entry's position, while the typed address still describes it.
+ *
+ * Checkout prefills the address box from the entry, and a located entry tells
+ * the customer to add their house or flat there — so an edit that keeps the
+ * located street line ("House 12, Chanmari West, Aizawl") is a refinement and
+ * keeps the fix. Replacing the street makes the fix describe somewhere else,
+ * and a wrong position is worse than none, so that drops it.
+ */
+export function coordsFor(
+  entry: SavedAddress | null,
+  typed: string,
+): { latitude: number; longitude: number } | null {
+  if (!entry || entry.latitude === null || entry.longitude === null) return null;
+  const line = entry.line.trim().toLowerCase();
+  if (!line || !typed.toLowerCase().includes(line)) return null;
+  return { latitude: entry.latitude, longitude: entry.longitude };
 }

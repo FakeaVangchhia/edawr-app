@@ -4,6 +4,9 @@ import {
   readAddresses,
   removeAddress,
   restoreAddress,
+  saveCurrentLocation,
+  CURRENT_LOCATION_ID,
+  coordsFor,
   selectAddress,
   selectedAddress,
   toDeliveryAddress,
@@ -221,8 +224,8 @@ describe('selectedAddress', () => {
     // Exactly what a hand-edited or older-format localStorage value looks like.
     const book = {
       entries: [
-        { id: 'a', label: 'Home', line: 'Somewhere', city: 'Aizawl', landmark: '' },
-        { id: 'b', label: 'Work', line: 'Elsewhere', city: 'Aizawl', landmark: '' },
+        { id: 'a', label: 'Home', line: 'Somewhere', city: 'Aizawl', landmark: '', latitude: null, longitude: null },
+        { id: 'b', label: 'Work', line: 'Elsewhere', city: 'Aizawl', landmark: '', latitude: null, longitude: null },
       ],
       selectedId: 'gone',
     };
@@ -236,7 +239,14 @@ describe('selectedAddress', () => {
 });
 
 describe('toDeliveryAddress', () => {
-  const base = { id: 'a', label: 'Home', line: 'Chaltlang Block C', city: 'Aizawl' };
+  const base = {
+    id: 'a',
+    label: 'Home',
+    line: 'Chaltlang Block C',
+    city: 'Aizawl',
+    latitude: null,
+    longitude: null,
+  };
 
   it('joins the line and the city', () => {
     expect(toDeliveryAddress({ ...base, landmark: '' })).toBe('Chaltlang Block C, Aizawl');
@@ -254,5 +264,77 @@ describe('toDeliveryAddress', () => {
   it('always clears the length the server requires of a real address', () => {
     // CheckoutSerializer.validate_customer_address wants eight characters.
     expect(toDeliveryAddress({ ...base, landmark: '' }).length).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe('coordinates', () => {
+  it('saves a typed address with no position', () => {
+    const home = seed();
+    expect(home).toMatchObject({ latitude: null, longitude: null });
+  });
+
+  it('keeps a pair and drops half of one or an impossible one', () => {
+    const line = 'Chaltlang Block C';
+    const both = addAddress({ label: 'A', line, city: '', landmark: '', latitude: 23.7, longitude: 92.7 });
+    const half = addAddress({ label: 'B', line, city: '', landmark: '', latitude: 23.7 });
+    const wild = addAddress({ label: 'C', line, city: '', landmark: '', latitude: 900, longitude: 92.7 });
+
+    expect(both).toMatchObject({ latitude: 23.7, longitude: 92.7 });
+    expect(half).toMatchObject({ latitude: null, longitude: null });
+    expect(wild).toMatchObject({ latitude: null, longitude: null });
+  });
+});
+
+describe('saveCurrentLocation', () => {
+  const here = { line: 'Chanmari West', city: 'Aizawl', latitude: 23.74, longitude: 92.71 };
+
+  it('adds the located entry first and selects it', () => {
+    seed();
+    saveCurrentLocation(here);
+    const book = readAddresses();
+    expect(book.entries[0]).toMatchObject({ id: CURRENT_LOCATION_ID, label: 'Current location', ...here });
+    expect(book.selectedId).toBe(CURRENT_LOCATION_ID);
+  });
+
+  it('updates the same entry when located again, keeping the landmark', () => {
+    saveCurrentLocation(here);
+    updateAddress(CURRENT_LOCATION_ID, { landmark: 'Opposite the church' });
+    saveCurrentLocation({ ...here, line: 'Zarkawt' });
+
+    const located = readAddresses().entries.filter((entry) => entry.id === CURRENT_LOCATION_ID);
+    expect(located).toHaveLength(1);
+    expect(located[0]).toMatchObject({ line: 'Zarkawt', landmark: 'Opposite the church' });
+  });
+});
+
+describe('coordsFor', () => {
+  const located = {
+    id: CURRENT_LOCATION_ID,
+    label: 'Current location',
+    line: 'Chanmari West',
+    city: 'Aizawl',
+    landmark: '',
+    latitude: 23.74,
+    longitude: 92.71,
+  };
+
+  it('keeps the fix for the prefilled address', () => {
+    expect(coordsFor(located, 'Chanmari West, Aizawl')).toEqual({ latitude: 23.74, longitude: 92.71 });
+  });
+
+  it('keeps the fix when the customer adds their house to it, as the toast asks', () => {
+    expect(coordsFor(located, 'House 12, chanmari west, Aizawl')).toEqual({
+      latitude: 23.74,
+      longitude: 92.71,
+    });
+  });
+
+  it('drops the fix once the street is replaced', () => {
+    expect(coordsFor(located, 'Zarkawt Main Road, Aizawl')).toBeNull();
+  });
+
+  it('is null for a typed address or no address', () => {
+    expect(coordsFor({ ...located, latitude: null, longitude: null }, 'Chanmari West')).toBeNull();
+    expect(coordsFor(null, 'Chanmari West')).toBeNull();
   });
 });

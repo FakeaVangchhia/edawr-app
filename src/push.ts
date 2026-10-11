@@ -1,7 +1,7 @@
 /**
  * Getting the phone to buzz when an order moves.
  *
- * Modelled closely on `mobile/src/push.ts` — the rider app solved this first
+ * Modelled closely on `edawr-delivery/src/push.ts` — the rider app solved this first
  * and every defensive branch below is one it earned. What differs is the
  * audience: a rider is *given* work by a notification, whereas a customer is
  * *told* about work already under way.

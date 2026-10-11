@@ -5,6 +5,7 @@ import {
   feeForTier,
   quoteSignature,
   tierFor,
+  hasTierChoice,
   tiersFrom,
 } from './delivery';
 import type { BasketQuote, CartLine, StoreConfig, StoreProduct } from '@/types';
@@ -121,7 +122,8 @@ describe('tierFor', () => {
   });
 
   it('resolves against the fallback when config is missing', () => {
-    expect(tierFor(null, 'slow').promise_minutes).toBe(45);
+    // The fallback is the one tier left; a stale `slow` resolves upward to it.
+    expect(tierFor(null, 'slow').promise_minutes).toBe(15);
   });
 
   it('defaults to instant', () => {
@@ -172,5 +174,16 @@ describe('feeForTier', () => {
   it('falls back to the list price before any quote lands', () => {
     expect(feeForTier(instant, 'instant', null)).toBe(15);
     expect(feeForTier(slow, 'instant', null)).toBe(5);
+  });
+});
+
+describe('hasTierChoice', () => {
+  it('is false for the one-tier store, so the speed picker is hidden', () => {
+    expect(hasTierChoice(null)).toBe(false);
+    expect(hasTierChoice(config({ delivery_tiers: [config().delivery_tiers[0]] }))).toBe(false);
+  });
+
+  it('is true when the store offers more than one speed again', () => {
+    expect(hasTierChoice(config())).toBe(true);
   });
 });

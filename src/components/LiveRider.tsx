@@ -2,6 +2,7 @@ import { LocateFixed, Navigation } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, Text, View } from 'react-native';
 
+import { LiveRiderMap } from '@/components/LiveRiderMap';
 import { PulseSoft } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toast';
 import { useRiderPosition } from '@/hooks/useRiderPosition';
@@ -14,10 +15,10 @@ import { colors } from '@/theme';
 /**
  * Where the rider is, while they are carrying this order.
  *
- * A port of the storefront's `LiveRider`, without its radar: on a phone the
- * distance and the direction are the sentence the customer reads, and a
- * picture of two dots adds a dependency the sentence does not need. Same
- * contract otherwise — the API's narrow view of a rider's position (distance,
+ * A port of the storefront's `LiveRider`, with a real map where the web draws
+ * its radar (`LiveRiderMap`). The map goes above the sentence, not in place of
+ * it: distance and direction are still what the customer reads, and the map
+ * shows where on the hill those numbers are. Same contract otherwise — the API's narrow view of a rider's position (distance,
  * direction, freshness; never an ETA), and an opt-in "share my location" that
  * tells the rider where the customer is actually standing and re-sends every
  * minute while the app is in front.
@@ -96,6 +97,9 @@ export function LiveRider({ token, active }: { token: string; active: boolean })
 
   return (
     <View className="mt-4 gap-4">
+      {position ? (
+        <LiveRiderMap position={position} stale={described?.stale ?? false} sharedAt={me} />
+      ) : null}
       <View className="bg-primary rounded-3xl p-5">
         <View className="flex-row items-center justify-between gap-3">
           <View className="flex-row items-center gap-2">

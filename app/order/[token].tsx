@@ -414,8 +414,10 @@ export default function OrderTrackerScreen() {
           ) : (
             <View className="mt-5">
               {STEPS.map((step, index) => {
-                const done = index < currentStep;
-                const active = index === currentStep;
+                // Delivered is the last step and nothing follows it, so reaching
+                // it completes it — amber and pulsing would read as still waiting.
+                const done = index < currentStep || (delivered && index === currentStep);
+                const active = index === currentStep && !delivered;
                 const stampKey = STAMPS[step.status];
                 const stamp = stampKey ? (order[stampKey] as string | null) : null;
                 const Icon = step.icon;

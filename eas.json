@@ -17,7 +17,7 @@
       "android": {
         "buildType": "apk"
       },
-      "//": "Set EXPO_PUBLIC_API_URL here, pointing at staging, before building. It is deliberately absent rather than a placeholder: src/config.ts throws at startup when nothing is configured, and a placeholder domain would disarm that guard and produce an installable build that fails every request instead."
+      "//": "EXPO_PUBLIC_API_URL is deliberately unset: src/config.ts throws at startup when nothing is configured, so a preview build cannot place real orders by accident. Set it to a staging API before building one, or to the production URL if you mean to test against live data."
     },
     "production": {
       "android": {
@@ -27,7 +27,11 @@
       "ios": {
         "autoIncrement": "buildNumber"
       },
-      "//": "Set EXPO_PUBLIC_API_URL here before the first real build. Absent on purpose - see the note on the preview profile. A production build pointed at a domain nobody owns fails on a device you cannot reach, which is the exact failure the startup guard exists to prevent. autoIncrement is set because the Play Store rejects a re-used versionCode."
+      "//": "The live API, and the R2 public host the images are served from (the API host 404s them, so an unset MEDIA_URL breaks every product image). Hard-coded rather than an EAS secret because both ship inside the bundle anyway. autoIncrement is set because the Play Store rejects a re-used versionCode. Android also needs GOOGLE_MAPS_ANDROID_API_KEY as an EAS environment variable, or the maps are blank; see app.config.js.",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://edawr-backend-lk9y.onrender.com",
+        "EXPO_PUBLIC_MEDIA_URL": "https://pub-37404e63d65a4fa4880118eaeaab55b9.r2.dev"
+      }
     }
   },
   "submit": {

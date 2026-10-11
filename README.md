@@ -153,7 +153,7 @@ and only the fallback in `lib/delivery.ts` needed the word changed.)
 
 ## Notifications
 
-`src/push.ts`, modelled on `../mobile/src/push.ts`. The rider app solved this
+`src/push.ts`, modelled on `../edawr-delivery/src/push.ts`. The rider app solved this
 first and every defensive branch here is one it earned.
 
 The difference is the audience, and it sets the importance: a rider is *given
@@ -206,3 +206,12 @@ banner, no crash), **a 429** from the checkout throttle, **backgrounding for an
 hour** (does the store still know it is closed?), and a **release build** —
 `eas build --profile preview` — because the config guard is designed to fail
 loudly there and only there.
+
+## Maps
+
+`react-native-maps`, because it is bundled in Expo Go: Apple Maps on iOS,
+Google Maps on Android, no build step. Expo Go brings its own Google key. A
+**release Android build** needs one of yours, or the map is a blank grey box:
+set `GOOGLE_MAPS_ANDROID_API_KEY` as an EAS environment variable (Maps SDK for
+Android, restricted to this package name and the signing SHA-1).
+`app.config.js` passes it to the plugin so it never lands in `app.json`.

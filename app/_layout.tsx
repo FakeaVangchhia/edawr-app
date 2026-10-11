@@ -30,9 +30,11 @@ import { AppHeader, MobileNav, OfflineBanner } from '@/components/AppShell';
 import { SearchOverlay } from '@/components/SearchOverlay';
 import { Toaster, toast } from '@/components/ui/toast';
 import { ConfigErrorScreen, ErrorBoundary } from '@/ErrorBoundary';
+import { useRelocateOnReturn } from '@/hooks/useCurrentLocation';
 import { configError } from '@/config';
 import { setSessionExpiredHandler } from '@/lib/api';
 import { refreshSession } from '@/lib/customer-api';
+import { runFirstLaunchLocate } from '@/lib/current-location';
 import { reportClientError, setReportedRoute } from '@/lib/report-error';
 import { addOrderNotificationListener, registerForPushNotifications } from '@/push';
 import { readSession, saveSession } from '@/lib/session';
@@ -65,6 +67,31 @@ function RouteProbe() {
   useEffect(() => {
     setReportedRoute('/' + segments.join('/'));
   }, [segments]);
+
+  return null;
+}
+
+/**
+ * Asks for location the first time the app opens, and fills in the address.
+ *
+ * Once per install (see `runFirstLaunchLocate`), and only once the app has
+ * painted, so the prompt arrives over the store rather than over a splash
+ * screen. Declining changes nothing: the header says "Add an address", and
+ * the Addresses screen offers location again or a typed address.
+ */
+function FirstLaunchLocator() {
+  const router = useRouter();
+  useRelocateOnReturn();
+
+  useEffect(() => {
+    void runFirstLaunchLocate().then((saved) => {
+      if (!saved) return;
+      toast.success('Delivering to ' + saved.line, {
+        description: 'Add your house or flat at checkout.',
+        action: { label: 'Change', onPress: () => router.navigate('/addresses') },
+      });
+    });
+  }, [router]);
 
   return null;
 }
@@ -168,6 +195,7 @@ export default function RootLayout() {
           }
         >
           <RouteProbe />
+          <FirstLaunchLocator />
           <View className="bg-background flex-1">
             <OfflineBanner />
             <AppHeader

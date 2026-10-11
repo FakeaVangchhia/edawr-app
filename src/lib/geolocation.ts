@@ -132,6 +132,22 @@ export async function requestPosition(timeoutMs = 10_000): Promise<GeolocationRe
 }
 
 /**
+ * Whether location is already allowed, without ever asking.
+ *
+ * For the tracking map's "you are here" dot: drawing it is a nicety, and a
+ * permission prompt that appears just because a map scrolled into view is the
+ * reliable way to earn a permanent refusal. Resolves false on any failure.
+ */
+export async function hasLocationPermission(): Promise<boolean> {
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    return status === Location.PermissionStatus.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Great-circle distance in kilometres.
  *
  * Straight-line, not travel distance. Aizawl is built on ridges, so the road

@@ -14,13 +14,15 @@
  * the entries are four short fields.
  */
 import { Link } from 'expo-router';
-import { Check, MapPin, Plus, Trash2, X } from 'lucide-react-native';
+import { Check, LocateFixed, MapPin, Plus, Settings, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { toast } from '@/components/ui/toast';
+import { useLocateState } from '@/hooks/useCurrentLocation';
 import { useAddressBook, useStoreConfig } from '@/hooks/useStoreData';
 import {
+  CURRENT_LOCATION_ID,
   addAddress,
   removeAddress,
   restoreAddress,
@@ -28,6 +30,12 @@ import {
   selectedAddress,
   toDeliveryAddress,
 } from '@/lib/addresses';
+import {
+  getLocateSnapshot,
+  locateCurrentAddress,
+  openLocationSettings,
+  takePendingFix,
+} from '@/lib/current-location';
 import { isValidAddress } from '@/lib/validation';
 import { GUTTER, colors } from '@/theme';
 
@@ -57,6 +65,9 @@ export default function AddressesScreen() {
       line: line.trim(),
       city: city.trim() || config?.store_city || '',
       landmark: landmark.trim(),
+      // A fix whose street the geocoder could not read, if there is one: the
+      // customer has just typed the street, so the two belong together.
+      ...takePendingFix(),
     });
     toast.success('Address saved on this device');
     reset();
@@ -91,6 +102,8 @@ export default function AddressesScreen() {
           </Pressable>
         ) : null}
       </View>
+
+      <LocateCard onNeedsTyping={() => setIsAdding(true)} />
 
       {isAdding ? (
         <View className="border-border/70 mt-8 rounded-4xl border p-6">
@@ -244,6 +257,91 @@ export default function AddressesScreen() {
         </Pressable>
       </Link>
     </ScrollView>
+  );
+}
+
+/**
+ * "Use my current location", in whichever form still works.
+ *
+ * The OS shows its permission prompt only so many times. After that, asking
+ * shows nothing, so a `blocked` customer gets a button to Settings instead;
+ * the root layout locates them as soon as they come back with it switched on.
+ * The typed form below is always there either way.
+ */
+function LocateCard({ onNeedsTyping }: { onNeedsTyping: () => void }) {
+  const book = useAddressBook();
+  const { status, pending } = useLocateState();
+  const hasLocated = book.entries.some((entry) => entry.id === CURRENT_LOCATION_ID);
+
+  const locate = async () => {
+    const saved = await locateCurrentAddress({ ask: true });
+    if (saved) {
+      toast.success('Delivering to ' + saved.line, {
+        description: 'Add your house or flat at checkout.',
+      });
+    } else if (getLocateSnapshot().pending) {
+      onNeedsTyping();
+    }
+  };
+
+  if (status === 'blocked') {
+    return (
+      <View className="bg-surface mt-8 rounded-3xl p-5">
+        <Text className="text-foreground text-sm font-semibold">Location is off for eDawr</Text>
+        <Text className="text-muted-foreground mt-1 text-sm">
+          Turn it on in Settings and we will fill in your address when you come back. Or add one
+          by hand.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={openLocationSettings}
+          className="border-border mt-4 h-11 flex-row items-center gap-2 self-start rounded-full border px-5"
+        >
+          <Settings size={16} color={colors.foreground} />
+          <Text className="text-foreground text-sm font-semibold">Open settings</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const locating = status === 'locating';
+  const note =
+    status === 'denied'
+      ? 'Location was not allowed. You can try again, or add an address by hand.'
+      : status === 'failed'
+        ? pending
+          ? 'We found you, but could not read the street name. Type it below and we will save your position with it.'
+          : 'We could not get a fix just now. Try again, or add an address by hand.'
+        : '';
+
+  return (
+    <View className="bg-surface mt-8 rounded-3xl p-5">
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => void locate()}
+        disabled={locating}
+        className={
+          'bg-amber h-11 flex-row items-center gap-2 self-start rounded-full px-5 ' +
+          (locating ? 'opacity-60' : '')
+        }
+      >
+        {locating ? (
+          <ActivityIndicator size="small" color={colors.amberForeground} />
+        ) : (
+          <LocateFixed size={16} color={colors.amberForeground} />
+        )}
+        <Text className="text-amber-foreground text-sm font-semibold">
+          {locating
+            ? 'Finding you…'
+            : hasLocated
+              ? 'Update my current location'
+              : 'Use my current location'}
+        </Text>
+      </Pressable>
+      <Text accessibilityLiveRegion="polite" className="text-muted-foreground mt-2 text-xs">
+        {note || 'Fills in the street you are on. You can add your house or flat at checkout.'}
+      </Text>
+    </View>
   );
 }
 

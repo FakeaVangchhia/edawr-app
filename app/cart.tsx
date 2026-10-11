@@ -35,7 +35,7 @@ import { useQuote } from '@/hooks/useQuote';
 import { useCart, useStoreConfig } from '@/hooks/useStoreData';
 import { assetUrl } from '@/lib/api';
 import { addOne, clearCart, mergeLines, removeLine, setQuantity } from '@/lib/cart-store';
-import { DEFAULT_DELIVERY_TYPE } from '@/lib/delivery';
+import { DEFAULT_DELIVERY_TYPE, hasTierChoice } from '@/lib/delivery';
 import { formatMoney } from '@/lib/format';
 import { GUTTER, colors } from '@/theme';
 import type { DeliveryType } from '@/types';
@@ -226,20 +226,22 @@ export default function CartScreen() {
         </View>
 
         <View className="border-border/70 mt-8 gap-6 rounded-4xl border p-6">
-          <View>
-            <Text className="text-foreground text-lg font-semibold">Delivery speed</Text>
-            <View className="mt-4">
-              <DeliveryTierPicker
-                config={config}
-                quote={quote}
-                selected={deliveryType}
-                onSelect={setDeliveryType}
-                disabled={isLoading}
-              />
+          {hasTierChoice(config) ? (
+            <View>
+              <Text className="text-foreground text-lg font-semibold">Delivery speed</Text>
+              <View className="mt-4">
+                <DeliveryTierPicker
+                  config={config}
+                  quote={quote}
+                  selected={deliveryType}
+                  onSelect={setDeliveryType}
+                  disabled={isLoading}
+                />
+              </View>
             </View>
-          </View>
+          ) : null}
 
-          <View className="border-border border-t pt-6">
+          <View className={hasTierChoice(config) ? 'border-border border-t pt-6' : undefined}>
             <Text className="text-foreground mb-4 text-lg font-semibold">Bill</Text>
             <BillLines quote={quote} />
             {isLoading ? (

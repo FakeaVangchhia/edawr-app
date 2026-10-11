@@ -29,10 +29,20 @@ export const DEFAULT_DELIVERY_TYPE: DeliveryType = 'instant';
  */
 export const FALLBACK_TIERS: DeliveryTier[] = [
   { key: 'instant', label: 'Instant', fee: 15, promise_minutes: 15 },
-  // The key is the tier's identity and stays `slow`; the label is what a
-  // customer reads, and "Saver" says what they get for choosing it.
-  { key: 'slow', label: 'Saver', fee: 5, promise_minutes: 45 },
 ];
+
+/**
+ * Whether there is a speed to choose at all.
+ *
+ * The store sells one tier since the Saver tier was withdrawn, and a picker
+ * with a single option is a question with one answer — so the cart and
+ * checkout show the bill's "Delivery" line and nothing else. Read from config
+ * rather than hard-coded, so offering a second tier again needs no client
+ * release.
+ */
+export function hasTierChoice(config: StoreConfig | null | undefined): boolean {
+  return tiersFrom(config).length > 1;
+}
 
 /** The store's tiers, fastest first, or the shipped defaults. */
 export function tiersFrom(config: StoreConfig | null | undefined): DeliveryTier[] {
